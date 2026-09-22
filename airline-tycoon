@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>에어라인 타이쿤 : 전체 자동화 업데이트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+        }
+        .floating-text {
+            position: absolute;
+            pointer-events: none;
+            font-weight: 800;
+            font-size: 1.2rem;
+            animation: floatUp 1s ease-out forwards;
+            z-index: 100;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .station-card {
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
+            position: relative;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        .station-card:hover { border-color: #475569; }
+
+        .queue-container {
+            min-height: 52px;
+            background-color: #020617;
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-content: flex-start;
+            border: 1px inset #334155;
+        }
+
+        .passenger {
+            font-size: 20px;
+            animation: popIn 0.2s ease-out;
+            display: inline-block;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+        .angry-shake {
+            animation: shake 0.5s infinite;
+            filter: drop-shadow(0 0 4px red);
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+
+        .runway {
+            background-color: #334155;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #1e293b;
+            border-radius: 12px;
+        }
+        .runway::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 0; right: 0; height: 4px;
+            background-image: linear-gradient(to right, #94a3b8 50%, transparent 50%);
+            background-size: 40px 100%;
+            transform: translateY(-50%);
+        }
+        .plane { position: absolute; font-size: 40px; z-index: 10; }
+        
+        @keyframes takeoffAnim {
+            0% { left: 5%; bottom: 10%; transform: scale(0.8) rotate(-10deg); opacity: 1; }
+            100% { left: 90%; bottom: 60%; transform: scale(1.3) rotate(-15deg); opacity: 0; }
+        }
+        @keyframes landingAnim {
+            0% { right: 5%; top: 60%; transform: scale(1.3) rotate(15deg); opacity: 0; }
+            20% { opacity: 1; }
+            100% { right: 90%; top: 10%; transform: scale(0.8) rotate(0deg); opacity: 1; }
+        }
+        .anim-takeoff { animation: takeoffAnim 2.5s ease-in forwards; }
+        .anim-landing { animation: landingAnim 2.5s ease-out forwards; }
+
+        .h-scroll::-webkit-scrollbar { height: 8px; }
+        .h-scroll::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        .h-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .h-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="bg-slate-950 border-b border-slate-800 p-4 flex justify-between items-center shadow-lg z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">🛫</span>
+            <div>
+                <h1 class="text-xl font-bold text-blue-400">에어라인 타이쿤</h1>
+                <p class="text-xs text-slate-400">자동화 & 난이도 업그레이드</p>
+            </div>
+        </div>
+        <div class="flex gap-6 text-lg font-semibold">
+            <div class="bg-slate-900 px-5 py-2 rounded-lg border border-slate-700 shadow-inner flex items-center gap-2 min-w-[150px] justify-between">
+                <span class="text-emerald-400">자산 ($):</span> 
+                <span id="uiMoney" class="text-white">100</span>
+            </div>
+            <div class="bg-slate-900 px-5 py-2 rounded-lg border border-slate-700 shadow-inner flex items-center gap-2 min-w-[150px] justify-between">
+                <span class="text-blue-400">평판 (%):</span> 
+                <span id="uiRep" class="text-white">30</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 p-4 flex flex-col gap-6 overflow-y-auto relative pb-52">
+        <!-- Runway Container -->
+        <div class="w-full max-w-6xl mx-auto shrink-0">
+            <div class="flex justify-between items-center mb-2 px-2">
+                <h2 class="text-slate-400 font-bold">이륙장 / 활주로 (Runway)</h2>
+                <span class="text-xs text-slate-500">실시간 관제 시스템</span>
+            </div>
+            <div id="runwayContainer" class="runway w-full h-24 shadow-inner"></div>
+        </div>
+
+        <!-- Terminal Flows (Arrival & Departure) -->
+        <div class="flex flex-col md:flex-row justify-center gap-8 md:gap-16 max-w-6xl mx-auto w-full">
+            
+            <!-- Left Side: Arrival Flow -->
+            <div class="flex-1 flex flex-col gap-6">
+                <div class="flex items-center justify-between border-b border-emerald-500/30 pb-2">
+                    <h2 class="text-emerald-400 font-bold text-xl">🛬 입국장 (Arrival Flow)</h2>
+                    <!-- Placeholder image spot for Arrival terminal banner -->
+                    <img src="https://placehold.co/120x35/0f172a/10b981?text=ARRIVAL" alt="Arrival Banner" class="rounded opacity-70" onerror="this.style.display='none'">
+                </div>
+                
+                <!-- Arrival 1: Arrival -->
+                <div class="station-card border-l-4 border-l-emerald-500">
+                    <h3 class="text-md font-bold text-emerald-300 mb-2">1. 도착</h3>
+                    <div id="q-arrival" class="queue-container mb-3"></div>
+                    <button onclick="handleStationClick('arrival')" class="w-full bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white py-2 rounded shadow transition-all active:scale-95">
+                        입국심사로 이동 ↓
+                    </button>
+                </div>
+
+                <!-- Arrival 2: Immigration -->
+                <div class="station-card border-l-4 border-l-emerald-500">
+                    <h3 class="text-md font-bold text-emerald-300 mb-2 flex justify-between">
+                        <span>2. 입국심사</span>
+                        <span class="text-xs bg-amber-900/50 text-amber-300 px-1 rounded">이벤트</span>
+                    </h3>
+                    <div id="q-immigration" class="queue-container mb-3"></div>
+                    <button onclick="handleStationClick('immigration')" class="w-full bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white py-2 rounded shadow transition-all active:scale-95">
+                        입국장으로 이동 ↓
+                    </button>
+                </div>
+
+                <!-- Arrival 3: Exit/Customs -->
+                <div class="station-card border-l-4 border-l-emerald-400 bg-emerald-900/20">
+                    <h3 class="text-md font-bold text-emerald-400 mb-2">3. 입국 (수익 창출)</h3>
+                    <div id="q-exit" class="queue-container mb-3"></div>
+                    <button onclick="handleStationClick('exit')" class="w-full bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-900 font-bold py-3 rounded shadow transition-all active:scale-95">
+                        입국 완료 (+$10, 평판+1)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Side: Departure Flow -->
+            <div class="flex-1 flex flex-col-reverse gap-6">
+                <div class="flex items-center justify-between border-t border-blue-500/30 pt-2 mt-auto">
+                    <h2 class="text-blue-400 font-bold text-xl">🛫 출국장 (Departure Flow)</h2>
+                    <!-- Placeholder image spot for Departure terminal banner -->
+                    <img src="https://placehold.co/120x35/0f172a/3b82f6?text=DEPARTURE" alt="Departure Banner" class="rounded opacity-70" onerror="this.style.display='none'">
+                </div>
+                
+                <!-- Departure 1: Check-in -->
+                <div class="station-card border-r-4 border-r-blue-500 bg-blue-900/20">
+                    <h3 class="text-md font-bold text-blue-400 mb-2 flex justify-between">
+                        <span>1. 체크인 (승객 발생)</span>
+                        <span class="text-xs bg-amber-900/50 text-amber-300 px-1 rounded">이벤트</span>
+                    </h3>
+                    <div id="q-checkin" class="queue-container mb-3"></div>
+                    <button onclick="handleStationClick('checkin')" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3 rounded shadow transition-all active:scale-95">
+                        수속장으로 이동 ↑
+                    </button>
+                </div>
+
+                <!-- Departure 2: Processing/Prep -->
+                <div class="station-card border-r-4 border-r-blue-500">
+                    <h3 class="text-md font-bold text-blue-300 mb-2">2. 수속</h3>
+                    <div id="q-processing" class="queue-container mb-3"></div>
+                    <button onclick="handleStationClick('processing')" class="w-full bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white py-2 rounded shadow transition-all active:scale-95">
+                        검사장으로 이동 ↑
+                    </button>
+                </div>
+
+                <!-- Departure 3: Security Inspection -->
+                <div class="station-card border-r-4 border-r-blue-500">
+                    <h3 class="text-md font-bold text-blue-300 mb-2 flex justify-between">
+                        <span>3. 보안 검사 (X-ray)</span>
+                        <span class="text-xs bg-amber-900/50 text-amber-300 px-1 rounded">이벤트</span>
+                    </h3>
+                    <div id="q-inspection" class="queue-container mb-3"></div>
+                    <button onclick="handleStationClick('inspection')" class="w-full bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white py-2 rounded shadow transition-all active:scale-95">
+                        탑승구로 이동 ↑
+                    </button>
+                </div>
+
+                <!-- Departure 4: Boarding -->
+                <div class="station-card border-r-4 border-r-blue-400">
+                    <h3 class="text-md font-bold text-blue-400 mb-2">4. 탑승 (수익 창출)</h3>
+                    <div id="q-boarding" class="queue-container mb-3"></div>
+                    <button onclick="handleStationClick('boarding')" class="w-full bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-bold py-3 rounded shadow transition-all active:scale-95">
+                        탑승 및 이륙 (+$10, 평판+1)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-800 border-t-2 border-slate-700 shadow-[0_-10px_20px_rgba(0,0,0,0.3)] p-4 z-30">
+        <div class="max-w-6xl mx-auto flex flex-col gap-3">
+            <div class="text-white font-bold text-lg flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span>💼</span> 직원 고용 센터 (3초마다 자동 처리)
+                    <span class="text-xs text-slate-400 font-normal ml-2 hidden md:inline">단계를 거칠수록 자동화 고용 비용이 상승합니다.</span>
+                </div>
+            </div>
+            <!-- Scrollable container for staff hiring buttons -->
+            <div class="flex gap-3 overflow-x-auto h-scroll pb-2 w-full">
+                <!-- Departure Staff -->
+                <button id="btnHire_checkin" onclick="hireStaff('checkin', 100, 'btnHire_checkin')" class="whitespace-nowrap flex-1 min-w-[130px] bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold py-2 px-3 rounded shadow active:scale-95 transition-all">
+                    체크인 ($100)
+                </button>
+                <button id="btnHire_processing" onclick="hireStaff('processing', 300, 'btnHire_processing')" class="whitespace-nowrap flex-1 min-w-[130px] bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold py-2 px-3 rounded shadow active:scale-95 transition-all">
+                    수속 ($300)
+                </button>
+                <button id="btnHire_inspection" onclick="hireStaff('inspection', 1000, 'btnHire_inspection')" class="whitespace-nowrap flex-1 min-w-[130px] bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold py-2 px-3 rounded shadow active:scale-95 transition-all">
+                    보안검사 ($1,000)
+                </button>
+                <button id="btnHire_boarding" onclick="hireStaff('boarding', 3000, 'btnHire_boarding')" class="whitespace-nowrap flex-1 min-w-[130px] bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold py-2 px-3 rounded shadow active:scale-95 transition-all">
+                    탑승 ($3,000)
+                </button>
+                
+                <div class="w-px bg-slate-600 mx-1 shrink-0"></div>
+                
+                <!-- Arrival Staff -->
+                <button id="btnHire_arrival" onclick="hireStaff('arrival', 100, 'btnHire_arrival')" class="whitespace-nowrap flex-1 min-w-[130px] bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold py-2 px-3 rounded shadow active:scale-95 transition-all">
+                    도착 ($100)
+                </button>
+                <button id="btnHire_immigration" onclick="hireStaff('immigration', 500, 'btnHire_immigration')" class="whitespace-nowrap flex-1 min-w-[130px] bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold py-2 px-3 rounded shadow active:scale-95 transition-all">
+                    입국심사 ($500)
+                </button>
+                <button id="btnHire_exit" onclick="hireStaff('exit', 2000, 'btnHire_exit')" class="whitespace-nowrap flex-1 min-w-[130px] bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold py-2 px-3 rounded shadow active:scale-95 transition-all">
+                    입국완료 ($2,000)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="eventModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-slate-800 border-2 border-slate-600 rounded-xl shadow-2xl w-11/12 max-w-md overflow-hidden transform scale-95 transition-transform" id="eventModalContent">
+            <!-- Modal Content dynamically injected -->
+        </div>
+    </div>
+
+    <div id="gameOverModal" class="fixed inset-0 bg-red-950/90 flex items-center justify-center z-[60] hidden opacity-0 transition-opacity">
+        <div class="bg-slate-900 border-4 border-red-600 rounded-2xl shadow-2xl p-8 text-center max-w-sm w-full">
+            <h2 class="text-5xl font-black text-red-500 mb-4">GAME OVER</h2>
+            <p class="text-slate-300 mb-6">평판이 0% 이하로 떨어져<br>공항이 강제 폐쇄되었습니다.</p>
+            <button onclick="location.reload()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-8 rounded-xl shadow-lg w-full transition-transform active:scale-95">
+                다시 시작하기
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let state = {
+            money: 100,
+            reputation: 30, 
+            paused: false,
+            gameOver: false
+        };
+
+        const queues = {
+            arrival: [], immigration: [], exit: [],
+            checkin: [], processing: [], inspection: [], boarding: []
+        };
+
+        const staff = {
+            arrival: false, immigration: false, exit: false,
+            checkin: false, processing: false, inspection: false, boarding: false
+        };
+
+        let passengerId = 0;
+        let eventTargetStation = null;
+
+        const FLOW_MAP = {
+            'arrival': 'immigration',
+            'immigration': 'exit',
+            'exit': null,
+            'checkin': 'processing',
+            'processing': 'inspection',
+            'inspection': 'boarding',
+            'boarding': null
+        };
+
+        // Objective events without regulation hints during prompt selection
+        const EVENTS_DB = {
+            'checkin': [
+                {
+                    text: "승객의 위탁수하물 무게를 측정한 결과 26kg으로 나왔습니다.",
+                    btn1: { 
+                        label: "추가 요금 징수 ($30)", 
+                        money: 30, rep: 2, isCorrect: true, 
+                        color: 'bg-blue-600', 
+                        msg: "🎉 정답! 무료 수하물 기준(통상 23kg)을 초과했으므로 규정대로 요금을 징수하여 수익과 평판이 상승했습니다." 
+                    },
+                    btn2: { 
+                        label: "무료 통과", 
+                        money: 0, rep: -5, isCorrect: false, 
+                        color: 'bg-emerald-600', 
+                        msg: "❌ 오답! 허용 중량을 초과한 수하물을 무상 통과시켜 공항 운영 손실 및 평판 하락이 발생했습니다." 
+                    }
+                },
+                {
+                    text: "승객의 위탁수하물 내부 X-ray 스캔 중 20,000mAh 보조배터리가 확인되었습니다.",
+                    btn1: { 
+                        label: "위탁수하물로 처리", 
+                        money: 0, rep: -8, isCorrect: false, 
+                        color: 'bg-red-600', 
+                        msg: "❌ 오답! 보조배터리는 화재 위험으로 위탁수하물 반입이 엄격히 금지됩니다. 안전 위반 발생!" 
+                    },
+                    btn2: { 
+                        label: "위탁 제외 및 기내 소지 안내", 
+                        money: 0, rep: 5, isCorrect: true, 
+                        color: 'bg-blue-600', 
+                        msg: "🎉 정답! 항공 안전 규정에 따라 보조배터리는 직접 기내에 휴대하도록 올바르게 조치했습니다." 
+                    }
+                }
+            ],
+            'inspection': [
+                {
+                    text: "기내 휴대 가방에서 150ml 용량의 스킨로션 병이 발각되었습니다.",
+                    btn1: { 
+                        label: "기내 반입 허용", 
+                        money: 0, rep: -8, isCorrect: false, 
+                        color: 'bg-emerald-600', 
+                        msg: "❌ 오답! 기내 액체류 휴대 기준은 용기당 100ml 이하입니다. 보안 규정 위반으로 평판이 감소했습니다." 
+                    },
+                    btn2: { 
+                        label: "압수 또는 위탁 처리", 
+                        money: 0, rep: 5, isCorrect: true, 
+                        color: 'bg-red-600', 
+                        msg: "🎉 정답! 100ml 초과 액체류는 기내 반입이 불가능하므로 적절히 차단하였습니다." 
+                    }
+                },
+                {
+                    text: "승객의 기내 가방에서 30cm 길이의 기념품 장식용 금속 칼이 스캔되었습니다.",
+                    btn1: { 
+                        label: "기내 반입 허용", 
+                        money: 0, rep: -12, isCorrect: false, 
+                        color: 'bg-emerald-600', 
+                        msg: "❌ 오답! 도검류는 기내 위해 물품으로 분류됩니다. 보안 허점으로 평판이 크게 감소했습니다." 
+                    },
+                    btn2: { 
+                        label: "보안 압수", 
+                        money: 10, rep: 5, isCorrect: true, 
+                        color: 'bg-red-600', 
+                        msg: "🎉 정답! 위험 물품을 승인 없이 통과시키지 않고 차단하여 보안 포상금을 받았습니다." 
+                    }
+                }
+            ],
+            'immigration': [
+                {
+                    text: "승객 여권의 유효기간이 오늘 기준으로 2개월 남아있습니다.",
+                    btn1: { 
+                        label: "입국 / 출국 허가", 
+                        money: 0, rep: -8, isCorrect: false, 
+                        color: 'bg-emerald-600', 
+                        msg: "❌ 오답! 대부분의 국제 항공 규정상 여권 잔여 유효기간은 최소 6개월 이상이어야 합니다." 
+                    },
+                    btn2: { 
+                        label: "입국 / 출국 거부 및 정밀 확인", 
+                        money: 30, rep: 5, isCorrect: true, 
+                        color: 'bg-amber-600', 
+                        msg: "🎉 정답! 여권 유효기간 미달 승객을 사전에 확인하여 불법 출입국 문제 발생을 막았습니다." 
+                    }
+                },
+                {
+                    text: "승객 여권의 인적사항 페이지 재질이 다소 어색하고 사진 부위가 미세하게 들떠있습니다.",
+                    btn1: { 
+                        label: "정밀 심사 및 위조 적발", 
+                        money: 50, rep: 5, isCorrect: true, 
+                        color: 'bg-amber-600', 
+                        msg: "🎉 정답! 위조 여권을 사용한 불법 출입국 시도를 적발하여 상급 기관으로부터 포상금을 받았습니다!" 
+                    },
+                    btn2: { 
+                        label: "일반 통과", 
+                        money: 0, rep: -10, isCorrect: false, 
+                        color: 'bg-emerald-600', 
+                        msg: "❌ 오답! 위조 여권 소지자를 통과시켜 공항 국가 보안 점수가 큰 폭으로 삭감되었습니다." 
+                    }
+                }
+            ]
+        };
+
+        function updateUI() {
+            document.getElementById('uiMoney').innerText = state.money.toLocaleString();
+            const repEl = document.getElementById('uiRep');
+            repEl.innerText = state.reputation;
+            repEl.className = state.reputation > 50 ? "text-blue-400 font-bold" : 
+                              state.reputation > 20 ? "text-amber-400 font-bold" : "text-red-500 font-black";
+
+            for (const [station, queue] of Object.entries(queues)) {
+                const container = document.getElementById(`q-${station}`);
+                if (!container) continue;
+                
+                container.innerHTML = ''; 
+                queue.forEach(p => {
+                    const span = document.createElement('span');
+                    span.className = `passenger ${p.isAngry ? 'angry-shake' : ''}`;
+                    span.innerText = p.isAngry ? '😡' : '👤';
+                    container.appendChild(span);
+                });
+            }
+        }
+
+        function checkGameOver() {
+            if (state.reputation <= 0 && !state.gameOver) {
+                state.gameOver = true;
+                state.paused = true;
+                state.reputation = 0;
+                updateUI();
+                
+                const modal = document.getElementById('gameOverModal');
+                modal.classList.remove('hidden');
+                requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+            }
+        }
+
+        function modifyStats(moneyDelta, repDelta, sourceElement = null) {
+            state.money += moneyDelta;
+            state.reputation = Math.min(100, state.reputation + repDelta);
+            
+            if (sourceElement && (moneyDelta !== 0 || repDelta !== 0)) {
+                let txt = [];
+                if(moneyDelta > 0) txt.push(`+$${moneyDelta}`);
+                else if(moneyDelta < 0) txt.push(`-$${Math.abs(moneyDelta)}`);
+                if(repDelta > 0) txt.push(`평판+${repDelta}`);
+                else if(repDelta < 0) txt.push(`평판${repDelta}`);
+                
+                const color = repDelta < 0 ? 'text-red-400' : 'text-emerald-400';
+                showFloatingText(sourceElement, txt.join(', '), color);
+            }
+            
+            updateUI();
+            checkGameOver();
+        }
+
+        function hireStaff(station, cost, btnId) {
+            if (state.gameOver) return;
+            if (state.money >= cost && !staff[station]) {
+                modifyStats(-cost, 0);
+                staff[station] = true;
+                const btn = document.getElementById(btnId);
+                btn.disabled = true;
+                btn.innerText = "고용됨";
+                btn.classList.add("bg-slate-600", "cursor-not-allowed", "text-slate-400");
+                btn.classList.remove("bg-blue-700", "hover:bg-blue-600", "bg-emerald-700", "hover:bg-emerald-600", "bg-purple-700", "hover:bg-purple-600");
+            }
+        }
+
+        function gameTick() {
+            if (state.paused || state.gameOver) return;
+
+            // Manage waiting times and passenger frustration
+            for (const station in queues) {
+                for (let i = queues[station].length - 1; i >= 0; i--) {
+                    const p = queues[station][i];
+                    p.waitTime++;
+                    
+                    if (p.waitTime >= 25) {
+                        queues[station].splice(i, 1);
+                        modifyStats(0, -5); 
+                    } else if (p.waitTime >= 15 && !p.isAngry) {
+                        p.isAngry = true;
+                    }
+                }
+            }
+
+            // Spawn passengers at Check-in based on reputation
+            const spawnChance = state.reputation / 100;
+            if (Math.random() < spawnChance) {
+                queues.checkin.push({ id: passengerId++, waitTime: 0, isAngry: false });
+            }
+            updateUI();
+        }
+
+        function autoProcessTick() {
+            if (state.paused || state.gameOver) return;
+            
+            for (const station in staff) {
+                if (staff[station] && queues[station].length > 0) {
+                    processPassenger(station, null, true);
+                }
+            }
+        }
+
+        function handleStationClick(stationId) {
+            if (state.paused || state.gameOver || queues[stationId].length === 0) return;
+            const btnElement = event.currentTarget;
+
+            // 15% chance to trigger random event
+            if (EVENTS_DB[stationId] && Math.random() < 0.15) {
+                triggerEvent(stationId, btnElement);
+            } else {
+                processPassenger(stationId, btnElement, false);
+            }
+        }
+
+        function triggerEvent(stationId, btnElement) {
+            state.paused = true;
+            eventTargetStation = { id: stationId, btn: btnElement };
+            
+            const eventList = EVENTS_DB[stationId];
+            const evt = eventList[Math.floor(Math.random() * eventList.length)];
+            const modalContent = document.getElementById('eventModalContent');
+            
+            // Build Question Screen (Strictly NO hints in prompt text)
+            modalContent.innerHTML = `
+                <div class="bg-amber-600/90 text-white p-4 text-center">
+                    <h3 class="text-xl font-bold tracking-widest">🚨 돌발 상황 발생</h3>
+                </div>
+                <div class="p-6 flex flex-col items-center">
+                    <div class="text-base text-center mb-6 font-medium bg-slate-900 p-4 rounded-lg w-full border border-slate-700 leading-relaxed">
+                        ${evt.text}
+                    </div>
+                    <div class="flex flex-col sm:flex-row w-full gap-3">
+                        <button onclick='resolveEvent(${JSON.stringify(evt.btn1)})' class="flex-1 ${evt.btn1.color} hover:brightness-110 text-white font-bold py-3 px-2 rounded-lg shadow-md active:scale-95 transition-transform text-sm">
+                            ${evt.btn1.label}
+                        </button>
+                        <button onclick='resolveEvent(${JSON.stringify(evt.btn2)})' class="flex-1 ${evt.btn2.color} hover:brightness-110 text-white font-bold py-3 px-2 rounded-lg shadow-md active:scale-95 transition-transform text-sm">
+                            ${evt.btn2.label}
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            const modal = document.getElementById('eventModal');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            });
+        }
+
+        function resolveEvent(btnData) {
+            // Apply stats based on player decision
+            modifyStats(btnData.money, btnData.rep, eventTargetStation.btn);
+            
+            const modalContent = document.getElementById('eventModalContent');
+            const moneyClass = btnData.money >= 0 ? 'text-emerald-400' : 'text-red-400';
+            const repClass = btnData.rep >= 0 ? 'text-blue-400' : 'text-red-400';
+            const moneySign = btnData.money > 0 ? '+' : '';
+            const repSign = btnData.rep > 0 ? '+' : '';
+
+            // Render result explanation screen
+            modalContent.innerHTML = `
+                <div class="${btnData.isCorrect ? 'bg-emerald-600/90' : 'bg-red-600/90'} text-white p-4 text-center">
+                    <h3 class="text-xl font-bold tracking-widest">${btnData.isCorrect ? '✅ 올바른 판정' : '❌ 판정 오류'}</h3>
+                </div>
+                <div class="p-6 flex flex-col items-center">
+                    <p class="text-base text-slate-200 text-center mb-4 font-normal bg-slate-900 p-4 rounded-lg w-full border border-slate-700 leading-relaxed">
+                        ${btnData.msg}
+                    </p>
+                    <div class="bg-slate-950 w-full p-3 rounded-lg flex justify-around text-lg font-bold mb-6 border border-slate-800">
+                        <span class="${moneyClass}">자산: ${moneySign}$${btnData.money}</span>
+                        <span class="${repClass}">평판: ${repSign}${btnData.rep}%</span>
+                    </div>
+                    <button onclick="closeEventModal()" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 rounded-lg shadow-md active:scale-95 transition-transform">
+                        확인
+                    </button>
+                </div>
+            `;
+        }
+
+        function closeEventModal() {
+            const modal = document.getElementById('eventModal');
+            const content = document.getElementById('eventModalContent');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                state.paused = false;
+                if(!state.gameOver) processPassenger(eventTargetStation.id, eventTargetStation.btn, true);
+                eventTargetStation = null;
+            }, 300);
+        }
+
+        function processPassenger(stationId, btnElement, isAuto = false) {
+            const queue = queues[stationId];
+            if(queue.length === 0) return;
+
+            const p = queue.shift();
+            
+            if (p.isAngry) {
+                modifyStats(0, -2, btnElement); 
+            }
+
+            p.waitTime = 0;
+            p.isAngry = false;
+            
+            const nextStation = FLOW_MAP[stationId];
+
+            if (nextStation) {
+                queues[nextStation].push(p);
+            } else {
+                modifyStats(10, 1, btnElement);
+                if (stationId === 'boarding') triggerPlaneAnimation('takeoff');
+            }
+            updateUI();
+        }
+
+        function landPlaneEvent() {
+            if (state.paused || state.gameOver) return;
+            triggerPlaneAnimation('landing');
+            setTimeout(() => {
+                if (state.gameOver) return;
+                const count = Math.floor(Math.random() * 3) + 3;
+                for(let i=0; i<count; i++) queues.arrival.push({ id: passengerId++, waitTime: 0, isAngry: false });
+                updateUI();
+            }, 2500);
+        }
+
+        function triggerPlaneAnimation(type) {
+            const container = document.getElementById('runwayContainer');
+            const plane = document.createElement('div');
+            plane.className = `plane ${type === 'takeoff' ? 'anim-takeoff' : 'anim-landing'}`;
+            plane.innerText = type === 'takeoff' ? '✈️' : '🛬';
+            container.appendChild(plane);
+            setTimeout(() => { if(plane.parentNode === container) container.removeChild(plane); }, 2500);
+        }
+
+        function showFloatingText(element, text, colorClass) {
+            if (!element) return;
+            const rect = element.getBoundingClientRect();
+            const floating = document.createElement('div');
+            floating.innerText = text;
+            floating.className = `floating-text ${colorClass}`;
+            floating.style.left = `${rect.left + rect.width / 2 - 30}px`;
+            floating.style.top = `${rect.top}px`;
+            document.body.appendChild(floating);
+            setTimeout(() => floating.remove(), 1000);
+        }
+
+        setInterval(gameTick, 1000); 
+        setInterval(autoProcessTick, 3000); 
+        setInterval(landPlaneEvent, 12000); 
+        updateUI();
+
+    </script>
+</body>
+</html>
