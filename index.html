@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Airline Tycoon - Airport Simulator</title>
+    <title>Airline Tycoon - Airport Management Simulator</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body {
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background: #0b0f19;
+            background: #090d16;
             color: #f0f4f8;
             font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
@@ -19,38 +19,47 @@
 
         /* Top Header */
         header {
-            height: 48px;
-            background: #151c2c;
-            border-bottom: 1px solid #2a364f;
+            height: 44px;
+            background: #111827;
+            border-bottom: 1px solid #1f293d;
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 16px;
         }
-        .logo { font-size: 1.1rem; font-weight: 900; color: #38bdf8; display: flex; align-items: center; gap: 6px; }
-        .stats-bar { display: flex; gap: 16px; align-items: center; font-size: 0.85rem; }
-        .stat-badge { background: #1e293b; padding: 4px 10px; border-radius: 20px; border: 1px solid #334155; display: flex; align-items: center; gap: 6px; }
+        .logo-group { display: flex; align-items: center; gap: 8px; }
+        .logo { font-size: 1.1rem; font-weight: 900; color: #38bdf8; letter-spacing: -0.5px; }
+        .edition-tag { background: #1e293b; color: #94a3b8; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #334155; }
+        
+        .stats-group { display: flex; align-items: center; gap: 12px; font-size: 0.85rem; }
+        .stat-badge { background: #172033; padding: 4px 10px; border-radius: 6px; border: 1px solid #24314d; display: flex; align-items: center; gap: 6px; }
         .stat-val { font-weight: bold; color: #fbbf24; }
+        
+        .top-btns { display: flex; gap: 8px; }
+        .btn-top-action {
+            padding: 5px 12px; font-size: 0.75rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;
+            display: flex; align-items: center; gap: 4px; color: #fff; transition: opacity 0.2s;
+        }
+        .btn-arr-sp { background: #059669; }
+        .btn-dep-sp { background: #0284c7; }
+        .btn-top-action:hover { opacity: 0.9; }
 
-        /* Runway Top Bar */
-        .runway-section {
-            height: 52px;
-            background: #1e293b;
-            border-bottom: 2px dashed #475569;
+        /* Runway Section */
+        .runway-bar {
+            height: 48px;
+            background: #131b2e;
+            border-bottom: 1px dashed #334155;
             position: relative;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 16px;
             overflow: hidden;
         }
-        .runway-line {
-            position: absolute; left: 0; right: 0; top: 50%;
-            border-top: 2px dashed #94a3b8; transform: translateY(-50%); z-index: 1;
-        }
-        .plane-anim {
-            font-size: 1.6rem; z-index: 2; position: absolute; transition: all 1.5s ease-in-out;
-        }
+        .runway-label { font-size: 0.7rem; color: #64748b; font-family: monospace; z-index: 2; }
+        .runway-line { position: absolute; left: 0; right: 0; top: 50%; border-top: 2px dashed #475569; z-index: 1; }
+        .plane-anim { position: absolute; font-size: 1.5rem; z-index: 2; transition: all 1.5s ease-in-out; top: 8px; }
+        .runway-info { z-index: 2; display: flex; gap: 12px; font-size: 0.75rem; color: #94a3b8; }
 
         /* Main Dashboard Grid */
         main {
@@ -59,367 +68,344 @@
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             padding: 10px 16px;
-            height: calc(100vh - 100px);
+            height: calc(100vh - 92px);
         }
 
-        .flow-column {
+        .flow-col {
             display: flex;
             flex-direction: column;
             gap: 8px;
             height: 100%;
         }
 
-        .flow-header {
-            font-size: 0.85rem;
+        .flow-title {
+            font-size: 0.8rem;
             font-weight: bold;
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .arr-header { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .dep-header { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+        .arr-bg { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .dep-bg { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); }
 
         /* Stage Cards */
         .stage-card {
             flex: 1;
-            background: #131b2e;
-            border: 1px solid #24314d;
+            background: #111827;
+            border: 1px solid #1f293d;
             border-radius: 8px;
             padding: 8px 12px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            position: relative;
         }
-        .stage-title-row {
+        
+        .stage-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .stage-name { font-size: 0.85rem; font-weight: bold; color: #e2e8f0; display: flex; align-items: center; gap: 6px; }
-        .staff-count { font-size: 0.75rem; color: #94a3b8; }
+        .staff-badge { font-size: 0.75rem; color: #94a3b8; background: #1e293b; padding: 2px 8px; border-radius: 4px; }
 
-        /* Passenger Queue Visual */
-        .queue-box {
+        /* Queue Area */
+        .queue-area {
             flex: 1;
             background: #090d16;
+            border: 1px solid #1e293b;
             border-radius: 6px;
-            margin: 4px 0;
-            padding: 4px 8px;
+            margin: 6px 0;
+            padding: 6px 10px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             overflow-x: auto;
-            border: 1px inset #1e293b;
+            min-height: 38px;
         }
-        .pax-icon { font-size: 1.2rem; animation: popIn 0.2s ease; }
+        .pax-empty { font-size: 0.75rem; color: #475569; }
+        .pax-emoji { font-size: 1.2rem; animation: popIn 0.2s ease; }
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-        /* Prominent Large Manual Process Button */
-        .btn-manual-large {
-            width: 100%;
-            padding: 7px 0;
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            color: #ffffff;
-            font-size: 0.85rem;
-            font-weight: 800;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            transition: all 0.1s ease;
-        }
-        .btn-manual-large:hover { background: linear-gradient(135deg, #38bdf8, #0ea5e9); transform: translateY(-1px); }
-        .btn-manual-large:active { transform: translateY(1px); box-shadow: none; }
-
-        /* Card Footer Controls */
-        .card-footer {
+        /* Footer Row in Card */
+        .card-foot {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 2px;
+            gap: 8px;
         }
-        .btn-hire {
-            background: #2563eb; color: #fff; border: none; padding: 4px 10px; border-radius: 4px;
-            font-size: 0.75rem; font-weight: bold; cursor: pointer;
+        .pax-cnt { font-size: 0.75rem; color: #94a3b8; white-space: nowrap; }
+        
+        .btn-group { display: flex; gap: 6px; align-items: center; }
+        
+        .btn-manual-action {
+            background: #0284c7; color: #fff; border: none; padding: 5px 11px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: background 0.15s;
         }
-        .btn-hire:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
-        .btn-upgrade {
-            background: #059669; color: #fff; border: none; padding: 4px 8px; border-radius: 4px;
-            font-size: 0.75rem; font-weight: bold; cursor: pointer; margin-left: 4px;
-        }
+        .btn-manual-action:hover { background: #38bdf8; }
+        .btn-manual-action:active { transform: scale(0.97); }
 
-        /* Modal Popups */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+        .btn-hire-action {
+            background: #2563eb; color: #fff; border: none; padding: 5px 11px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: background 0.15s;
+        }
+        .btn-hire-action:disabled { background: #1e293b; color: #475569; cursor: not-allowed; }
+        .btn-hire-action:not(:disabled):hover { background: #3b82f6; }
+
+        .btn-up-action {
+            background: #059669; color: #fff; border: none; padding: 5px 9px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: background 0.15s;
+        }
+        .btn-up-action:hover { background: #10b981; }
+
+        /* Modals */
+        .modal-mask {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
             display: flex; justify-content: center; align-items: center; z-index: 100;
             backdrop-filter: blur(4px);
         }
-        .modal-card {
-            background: #1e293b; border: 2px solid #38bdf8; border-radius: 12px;
-            width: 480px; max-width: 90vw; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        .modal-box {
+            background: #111827; border: 2px solid #38bdf8; border-radius: 12px;
+            width: 480px; max-width: 92vw; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
         }
-        .modal-title { font-size: 1.1rem; font-weight: bold; color: #38bdf8; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .modal-body { font-size: 0.9rem; line-height: 1.5; color: #cbd5e1; margin-bottom: 16px; }
-        .modal-options { display: flex; flex-direction: column; gap: 8px; }
-        .btn-option {
-            background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 10px 14px;
+        .modal-title { font-size: 1.05rem; font-weight: bold; color: #38bdf8; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .modal-desc { font-size: 0.88rem; line-height: 1.5; color: #cbd5e1; margin-bottom: 16px; background: #1e293b; padding: 12px; border-radius: 6px; }
+        .modal-btns { display: flex; flex-direction: column; gap: 8px; }
+        .btn-opt {
+            background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 10px 14px;
             border-radius: 6px; font-size: 0.85rem; text-align: left; cursor: pointer; transition: all 0.2s;
         }
-        .btn-option:hover { background: #0284c7; border-color: #38bdf8; }
+        .btn-opt:hover { background: #0284c7; border-color: #38bdf8; }
 
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Top Header Navigation -->
+    <!-- Header -->
     <header>
-        <div class="logo">✈️ AIRLINE TYCOON <span style="font-size:0.7rem; color:#94a3b8; font-weight:normal;">v3.0</span></div>
-        <div class="stats-bar">
+        <div class="logo-group">
+            <div class="logo">✈️ AIRLINE TYCOON</div>
+            <div class="edition-tag">100vh FULL EDITION</div>
+        </div>
+        <div class="stats-group">
             <div class="stat-badge">💰 자산: <span id="txt-money" class="stat-val">$100</span></div>
             <div class="stat-badge">⭐ 평판: <span id="txt-rep" class="stat-val">30%</span></div>
-            <div class="stat-badge">🌦️ 날씨: <span id="txt-weather" style="color:#e2e8f0; font-weight:bold;">☀️ 맑음</span></div>
-            <div class="stat-badge">📜 미션: <span id="txt-mission" style="color:#38bdf8; font-weight:bold;">체크인 고용하기</span></div>
+            <div class="stat-badge">👥 대기: <span id="txt-pax-total" style="color:#e2e8f0; font-weight:bold;">0명</span></div>
+        </div>
+        <div class="top-btns">
+            <button class="btn-top-action btn-arr-sp" onclick="addPassenger('arr1')">🛬 입국편 착륙 (+승객)</button>
+            <button class="btn-top-action btn-dep-sp" onclick="addPassenger('dep1')">🛫 출국 승객 모집 (+승객)</button>
         </div>
     </header>
 
-    <!-- Runway Visual Bar -->
-    <div class="runway-section">
+    <!-- Runway Section -->
+    <div class="runway-bar">
+        <div class="runway-label">RUNWAY 09L / 27R</div>
         <div class="runway-line"></div>
         <div id="runway-plane" class="plane-anim" style="left: -50px;">🛫</div>
-        <div style="z-index:2; font-size:0.8rem; color:#cbd5e1; background:rgba(15,23,42,0.8); padding:2px 8px; border-radius:4px;">
-            RUNWAY 09L / 27R
+        <div class="runway-info">
+            <span>🛬 도착: <b id="cnt-land" style="color:#34d399;">0</b>편</span>
+            <span>🛫 출발: <b id="cnt-takeoff" style="color:#38bdf8;">0</b>편</span>
         </div>
     </div>
 
-    <!-- Dashboard Content -->
+    <!-- Main Grid -->
     <main>
         <!-- ARRIVAL FLOW (Left: Top to Bottom) -->
-        <div class="flow-column">
-            <div class="flow-header arr-header">
+        <div class="flow-col">
+            <div class="flow-title arr-bg">
                 <span>🛬 입국장 (ARRIVAL FLOW)</span>
-                <span>도착 ➔ 심사 ➔ 세관</span>
+                <span>도착 ➔ 심사 ➔ 수하물수령</span>
             </div>
 
-            <!-- Arr 1: Aircraft Landing -->
+            <!-- Arr 1 -->
             <div class="stage-card">
-                <div class="stage-title-row">
+                <div class="stage-head">
                     <div class="stage-name">1. 항공기 도착 & 게이트 🛬</div>
-                    <div class="staff-count">직원: <span id="staff-arr1">0</span>명</div>
+                    <div class="staff-badge">직원: <span id="staff-arr1">0</span>명</div>
                 </div>
-                <div class="queue-box" id="queue-arr1"></div>
-                <button class="btn-manual-large" onclick="manualProcess('arr1')">⚡ 수동 승객 처리</button>
-                <div class="card-footer">
-                    <span style="font-size:0.75rem; color:#94a3b8;">대기: <b id="cnt-arr1" style="color:#fff;">0</b>명</span>
-                    <div>
-                        <button class="btn-hire" id="btn-hire-arr1" onclick="hireStaff('arr1', 100)">직원 고용 ($100)</button>
+                <div class="queue-area" id="queue-arr1"><span class="pax-empty">대기 승객 없음</span></div>
+                <div class="card-foot">
+                    <span class="pax-cnt">대기인원: <b id="cnt-arr1" style="color:#fff;">0</b>명</span>
+                    <div class="btn-group">
+                        <button class="btn-manual-action" onclick="manualProcess('arr1')">수동 처리 ⚡</button>
+                        <button class="btn-hire-action" id="btn-hire-arr1" onclick="hireStaff('arr1', 100)">직원 고용 ($100)</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Arr 2: Immigration -->
+            <!-- Arr 2 -->
             <div class="stage-card">
-                <div class="stage-title-row">
+                <div class="stage-head">
                     <div class="stage-name">2. 입국 심사대 (Immigration) 🛂</div>
-                    <div class="staff-count">직원: <span id="staff-arr2">0</span>명</div>
+                    <div class="staff-badge">직원: <span id="staff-arr2">0</span>명</div>
                 </div>
-                <div class="queue-box" id="queue-arr2"></div>
-                <button class="btn-manual-large" onclick="manualProcess('arr2')">⚡ 수동 승객 처리</button>
-                <div class="card-footer">
-                    <span style="font-size:0.75rem; color:#94a3b8;">대기: <b id="cnt-arr2" style="color:#fff;">0</b>명</span>
-                    <div>
-                        <button class="btn-hire" id="btn-hire-arr2" onclick="hireStaff('arr2', 500)">직원 고용 ($500)</button>
-                        <button class="btn-upgrade" onclick="upgradeFacility('arr2', 1200)">e-Gate ($1,200)</button>
+                <div class="queue-area" id="queue-arr2"><span class="pax-empty">대기 승객 없음</span></div>
+                <div class="card-foot">
+                    <span class="pax-cnt">대기인원: <b id="cnt-arr2" style="color:#fff;">0</b>명</span>
+                    <div class="btn-group">
+                        <button class="btn-manual-action" onclick="manualProcess('arr2')">수동 처리 ⚡</button>
+                        <button class="btn-hire-action" id="btn-hire-arr2" onclick="hireStaff('arr2', 500)">직원 고용 ($500)</button>
+                        <button class="btn-up-action" onclick="upgradeFacility('arr2', 1200)">e-Gate ($1,200)</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Arr 3: Customs & Exit -->
+            <!-- Arr 3 -->
             <div class="stage-card">
-                <div class="stage-title-row">
-                    <div class="stage-name">3. 수하물 수령 & 세관 (Customs) 🧳</div>
-                    <div class="staff-count">직원: <span id="staff-arr3">0</span>명</div>
+                <div class="stage-head">
+                    <div class="stage-name">3. 수하물 수령 & 입국 (Customs) 🧳</div>
+                    <div class="staff-badge">직원: <span id="staff-arr3">0</span>명</div>
                 </div>
-                <div class="queue-box" id="queue-arr3"></div>
-                <button class="btn-manual-large" onclick="manualProcess('arr3')">⚡ 수동 승객 처리</button>
-                <div class="card-footer">
-                    <span style="font-size:0.75rem; color:#94a3b8;">대기: <b id="cnt-arr3" style="color:#fff;">0</b>명</span>
-                    <div>
-                        <button class="btn-hire" id="btn-hire-arr3" onclick="hireStaff('arr3', 2000)">직원 고용 ($2,000)</button>
+                <div class="queue-area" id="queue-arr3"><span class="pax-empty">대기 승객 없음</span></div>
+                <div class="card-foot">
+                    <span class="pax-cnt">대기인원: <b id="cnt-arr3" style="color:#fff;">0</b>명</span>
+                    <div class="btn-group">
+                        <button class="btn-manual-action" onclick="manualProcess('arr3')">수동 처리 ⚡</button>
+                        <button class="btn-hire-action" id="btn-hire-arr3" onclick="hireStaff('arr3', 2000)">직원 고용 ($2,000)</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- DEPARTURE FLOW (Right: Bottom to Top) -->
-        <div class="flow-column">
-            <div class="flow-header dep-header">
+        <!-- DEPARTURE FLOW (Right: Top to Bottom) -->
+        <div class="flow-col">
+            <div class="flow-title dep-bg">
                 <span>🛫 출국장 (DEPARTURE FLOW)</span>
-                <span>체크인 ➔ 보안검색 ➔ 심사 ➔ 탑승</span>
+                <span>체크인 ➔ 보안검색 ➔ 출국심사 ➔ 탑승</span>
             </div>
 
-            <!-- Dep 4: Boarding Gate (Top) -->
+            <!-- Dep 1 -->
             <div class="stage-card">
-                <div class="stage-title-row">
-                    <div class="stage-name">4. 탑승 게이트 (Gate) 🚪</div>
-                    <div class="staff-count">직원: <span id="staff-dep4">0</span>명</div>
-                </div>
-                <div class="queue-box" id="queue-dep4"></div>
-                <button class="btn-manual-large" onclick="manualProcess('dep4')">⚡ 수동 승객 처리</button>
-                <div class="card-footer">
-                    <span style="font-size:0.75rem; color:#94a3b8;">대기: <b id="cnt-dep4" style="color:#fff;">0</b>명</span>
-                    <div>
-                        <button class="btn-hire" id="btn-hire-dep4" onclick="hireStaff('dep4', 3000)">직원 고용 ($3,000)</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dep 3: Departure Immigration -->
-            <div class="stage-card">
-                <div class="stage-title-row">
-                    <div class="stage-name">3. 출국 심사대 (Immigration) 🛂</div>
-                    <div class="staff-count">직원: <span id="staff-dep3">0</span>명</div>
-                </div>
-                <div class="queue-box" id="queue-dep3"></div>
-                <button class="btn-manual-large" onclick="manualProcess('dep3')">⚡ 수동 승객 처리</button>
-                <div class="card-footer">
-                    <span style="font-size:0.75rem; color:#94a3b8;">대기: <b id="cnt-dep3" style="color:#fff;">0</b>명</span>
-                    <div>
-                        <button class="btn-hire" id="btn-hire-dep3" onclick="hireStaff('dep3', 1000)">직원 고용 ($1,000)</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dep 2: Security Check -->
-            <div class="stage-card">
-                <div class="stage-title-row">
-                    <div class="stage-name">2. 보안 검색대 (Security) 🔍</div>
-                    <div class="staff-count">직원: <span id="staff-dep2">0</span>명</div>
-                </div>
-                <div class="queue-box" id="queue-dep2"></div>
-                <button class="btn-manual-large" onclick="manualProcess('dep2')">⚡ 수동 승객 처리</button>
-                <div class="card-footer">
-                    <span style="font-size:0.75rem; color:#94a3b8;">대기: <b id="cnt-dep2" style="color:#fff;">0</b>명</span>
-                    <div>
-                        <button class="btn-hire" id="btn-hire-dep2" onclick="hireStaff('dep2', 300)">직원 고용 ($300)</button>
-                        <button class="btn-upgrade" onclick="upgradeFacility('dep2', 800)">3D CT 스캐너 ($800)</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dep 1: Check-in Counter (Bottom) -->
-            <div class="stage-card">
-                <div class="stage-title-row">
+                <div class="stage-head">
                     <div class="stage-name">1. 체크인 카운터 (Check-in) 🎟️</div>
-                    <div class="staff-count">직원: <span id="staff-dep1">0</span>명</div>
+                    <div class="staff-badge">직원: <span id="staff-dep1">0</span>명</div>
                 </div>
-                <div class="queue-box" id="queue-dep1"></div>
-                <button class="btn-manual-large" onclick="manualProcess('dep1')">⚡ 수동 승객 처리</button>
-                <div class="card-footer">
-                    <span style="font-size:0.75rem; color:#94a3b8;">대기: <b id="cnt-dep1" style="color:#fff;">0</b>명</span>
-                    <div>
-                        <button class="btn-hire" id="btn-hire-dep1" onclick="hireStaff('dep1', 100)">직원 고용 ($100)</button>
-                        <button class="btn-upgrade" onclick="upgradeFacility('dep1', 300)">키오스크 ($300)</button>
+                <div class="queue-area" id="queue-dep1"><span class="pax-empty">대기 승객 없음</span></div>
+                <div class="card-foot">
+                    <span class="pax-cnt">대기인원: <b id="cnt-dep1" style="color:#fff;">0</b>명</span>
+                    <div class="btn-group">
+                        <button class="btn-manual-action" onclick="manualProcess('dep1')">수동 처리 ⚡</button>
+                        <button class="btn-hire-action" id="btn-hire-dep1" onclick="hireStaff('dep1', 100)">직원 고용 ($100)</button>
+                        <button class="btn-up-action" onclick="upgradeFacility('dep1', 300)">키오스크 ($300)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dep 2 -->
+            <div class="stage-card">
+                <div class="stage-head">
+                    <div class="stage-name">2. 보안검색대 (Security) 🔍</div>
+                    <div class="staff-badge">직원: <span id="staff-dep2">0</span>명</div>
+                </div>
+                <div class="queue-area" id="queue-dep2"><span class="pax-empty">대기 승객 없음</span></div>
+                <div class="card-foot">
+                    <span class="pax-cnt">대기인원: <b id="cnt-dep2" style="color:#fff;">0</b>명</span>
+                    <div class="btn-group">
+                        <button class="btn-manual-action" onclick="manualProcess('dep2')">수동 처리 ⚡</button>
+                        <button class="btn-hire-action" id="btn-hire-dep2" onclick="hireStaff('dep2', 300)">직원 고용 ($300)</button>
+                        <button class="btn-up-action" onclick="upgradeFacility('dep2', 800)">3D CT ($800)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dep 3 -->
+            <div class="stage-card">
+                <div class="stage-head">
+                    <div class="stage-name">3. 출국 심사대 (Immigration) 🛂</div>
+                    <div class="staff-badge">직원: <span id="staff-dep3">0</span>명</div>
+                </div>
+                <div class="queue-area" id="queue-dep3"><span class="pax-empty">대기 승객 없음</span></div>
+                <div class="card-foot">
+                    <span class="pax-cnt">대기인원: <b id="cnt-dep3" style="color:#fff;">0</b>명</span>
+                    <div class="btn-group">
+                        <button class="btn-manual-action" onclick="manualProcess('dep3')">수동 처리 ⚡</button>
+                        <button class="btn-hire-action" id="btn-hire-dep3" onclick="hireStaff('dep3', 1000)">직원 고용 ($1,000)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dep 4 -->
+            <div class="stage-card">
+                <div class="stage-head">
+                    <div class="stage-name">4. 탑승 게이트 (Gate) 🚪</div>
+                    <div class="staff-badge">직원: <span id="staff-dep4">0</span>명</div>
+                </div>
+                <div class="queue-area" id="queue-dep4"><span class="pax-empty">대기 승객 없음</span></div>
+                <div class="card-foot">
+                    <span class="pax-cnt">대기인원: <b id="cnt-dep4" style="color:#fff;">0</b>명</span>
+                    <div class="btn-group">
+                        <button class="btn-manual-action" onclick="manualProcess('dep4')">수동 처리 ⚡</button>
+                        <button class="btn-hire-action" id="btn-hire-dep4" onclick="hireStaff('dep4', 3000)">직원 고용 ($3,000)</button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Event Popup Modal -->
-    <div id="modal-event" class="modal-overlay hidden">
-        <div class="modal-card">
+    <!-- Modal Popup -->
+    <div id="modal-event" class="modal-mask hidden">
+        <div class="modal-box">
             <div class="modal-title" id="modal-title">🚨 현장 퀴즈 이벤트</div>
-            <div class="modal-body" id="modal-body">이벤트 내용입니다.</div>
-            <div class="modal-options" id="modal-options"></div>
+            <div class="modal-desc" id="modal-desc">내용</div>
+            <div class="modal-btns" id="modal-btns"></div>
         </div>
     </div>
 
-    <!-- Logic Script -->
+    <!-- Script -->
     <script>
-        // Game State
         let gameState = {
             money: 100,
             reputation: 30,
-            weather: '☀️ 맑음',
-            missionIndex: 0,
-            queues: {
-                arr1: [], arr2: [], arr3: [],
-                dep1: [], dep2: [], dep3: [], dep4: []
-            },
-            staff: {
-                arr1: 0, arr2: 0, arr3: 0,
-                dep1: 0, dep2: 0, dep3: 0, dep4: 0
-            },
-            upgrades: {
-                dep1: false, dep2: false, arr2: false
-            }
+            landedCount: 0,
+            takeoffCount: 0,
+            queues: { arr1: [], arr2: [], arr3: [], dep1: [], dep2: [], dep3: [], dep4: [] },
+            staff: { arr1: 0, arr2: 0, arr3: 0, dep1: 0, dep2: 0, dep3: 0, dep4: 0 },
+            upgrades: { dep1: false, dep2: false, arr2: false }
         };
 
-        const missions = [
-            "체크인 직원 고용하기 ($100)",
-            "승객 10명 무사히 이륙시키기",
-            "자산 $1,000 달성하기"
-        ];
-
-        // Ambiguous Events Database (NO HINTS in Question/Options!)
         const eventDatabase = [
             {
-                title: "보안검색: 용기 용량 확인",
-                q: "승객의 가방에서 용량 120ml 크기 용기에 내용물이 약 20ml 정도 남아있는 수분 크림 제품이 발견되었습니다.",
+                title: "보안검색: 용기 용량 점검",
+                q: "승객 가방 검색 중 120ml 크기 용기에 약 20ml의 크림이 남아있는 화장품이 발견되었습니다.",
                 options: [
-                    { txt: "기내 반입 허용", correct: false, res: "보안 규정 위반 적발! 내용물 잔여량과 상관없이 '용기 용량(100ml 이하)' 기준이 적용됩니다.", money: -150, rep: -10 },
-                    { txt: "반입 불허 및 포기 유도", correct: true, res: "정확한 규정 적용! 액체류는 용기 기준 100ml를 초과하면 기내 반입이 불가능합니다.", money: 50, rep: 3 }
+                    { txt: "기내 반입 승인", correct: false, res: "보안 규정 위반 적발! 잔여 내용물 양과 관계없이 '용기 전체 용량(100ml 이하)' 기준이 적용됩니다.", money: -150, rep: -10 },
+                    { txt: "반입 불허 및 포기 유도", correct: true, res: "정확한 규정 적용! 100ml를 초과하는 용기는 기내 반입이 금지됩니다.", money: 50, rep: 3 }
                 ]
             },
             {
-                title: "보안검색: 스킨 로션 용기",
-                q: "승객이 투명 비닐지퍼백에 95ml 용량의 스킨 로션 단품 1개를 넣어서 제시했습니다.",
+                title: "보안검색: 로션 개별 용기",
+                q: "승객이 투명 지퍼백에 95ml 용량의 스킨 로션 단품 1개를 담아 제시했습니다.",
                 options: [
-                    { txt: "기내 반입 허용", correct: true, res: "정답! 100ml 이하 용기는 투명 비닐봉투에 담아 반입할 수 있습니다.", money: 50, rep: 3 },
-                    { txt: "반입 불허 및 압수", correct: false, res: "과잉 통제 발생! 규정에 부합하는 정상 물품을 불허하여 승객이 강력히 항의했습니다.", money: -100, rep: -5 }
+                    { txt: "기내 반입 승인", correct: true, res: "올바른 조치! 100ml 이하 용기는 투명 지퍼백 소지 시 기내 반입이 가능합니다.", money: 50, rep: 3 },
+                    { txt: "반입 불허 및 압수", correct: false, res: "과잉 통제 적발! 허용 규정에 부합하는 물품을 불허하여 승객 항의가 발생했습니다.", money: -100, rep: -5 }
                 ]
             },
             {
-                title: "체크인: 리튬 보조배터리",
-                q: "승객이 위탁 수하물 가방에 90Wh 용량의 휴대폰 보조배터리를 넣은 채 카운터에 위탁했습니다.",
+                title: "체크인: 보조배터리 수하물",
+                q: "승객이 위탁 수하물 가방 안에 90Wh 용량의 휴대폰 보조배터리를 넣은 채 카운터에 위탁했습니다.",
                 options: [
-                    { txt: "위탁 수하물로 처리 허용", correct: false, res: "위험물 규정 위반! 보조배터리는 화재 위험으로 인해 위탁 수하물이 절대 불가합니다.", money: -200, rep: -10 },
-                    { txt: "가방에서 꺼내 기내 소지 유도", correct: true, res: "정확한 조치! 100Wh 이하 보조배터리는 기내 휴대 반입 대상입니다.", money: 50, rep: 3 }
+                    { txt: "위탁 수하물 처리", correct: false, res: "위험물 운송 규정 위반! 보조배터리는 화재 위험으로 위탁 수하물로 보낼 수 없습니다.", money: -200, rep: -10 },
+                    { txt: "기내 휴대 소지 유도", correct: true, res: "정확한 수속! 100Wh 이하 보조배터리는 승객이 직접 기내에 가지고 탑승해야 합니다.", money: 50, rep: 3 }
                 ]
             },
             {
                 title: "보안검색: 처방 의약품",
-                q: "승객이 의사 처방전이 첨부된 150ml 용량의 액체 의약품을 소지하고 보안검색대를 통과하려 합니다.",
+                q: "승객이 의사 처방전이 첨부된 150ml 액체 의약품을 소지하고 보안검색대를 통과하려 합니다.",
                 options: [
-                    { txt: "기내 반입 허용", correct: true, res: "올바른 판단! 의사 처방전이 확인된 의약품은 100ml를 초과해도 기내 반입 예외가 인정됩니다.", money: 60, rep: 4 },
-                    { txt: "100ml 초과로 반입 거부", correct: false, res: "과잉 제재! 필수 의약품 예외 조항을 숙지하지 못해 항의가 발생했습니다.", money: -100, rep: -5 }
-                ]
-            },
-            {
-                title: "체크인: 여권 잔여 유효기간",
-                q: "대만(잔여 유효기간 6개월 이상 요구국)으로 출국하는 승객의 여권 만료일이 4개월 남아있습니다.",
-                options: [
-                    { txt: "출국 수속 완료", correct: false, res: "도착국 입국 거부 발생! 잔여 유효기간 미달 승객을 탑승시켜 항공사 과태료 부과.", money: -300, rep: -15 },
-                    { txt: "수속 거부 및 여권 재발급 안내", correct: true, res: "정확한 수속 조치! 도착국의 최소 여권 유효기간 미달 시 수속을 거절해야 합니다.", money: 50, rep: 3 }
+                    { txt: "기내 반입 승인", correct: true, res: "올바른 판단! 처방전이 확인된 필수 의약품은 100ml 초과 시에도 예외 승인됩니다.", money: 60, rep: 4 },
+                    { txt: "100ml 초과로 반입 거부", correct: false, res: "과잉 제재! 필수 의약품 예외 조항 미숙지로 과잉 통제 패널티가 부과되었습니다.", money: -100, rep: -5 }
                 ]
             }
         ];
 
-        // Core Game Loop
+        // Loop
         setInterval(() => {
-            // Spawn Passengers randomly
-            if (Math.random() < 0.6) addPassenger('dep1');
-            if (Math.random() < 0.4) addPassenger('arr1');
+            if (Math.random() < 0.5) addPassenger('dep1');
+            if (Math.random() < 0.3) addPassenger('arr1');
 
-            // Auto Process by Staff
             processAuto('dep1', 'dep2');
             processAuto('dep2', 'dep3');
             processAuto('dep3', 'dep4');
@@ -429,31 +415,28 @@
             processAuto('arr2', 'arr3');
             processAuto('arr3', null, 15);
 
-            // Random Event Trigger
-            if (Math.random() < 0.05) {
-                triggerEvent();
-            }
+            if (Math.random() < 0.04) triggerEvent();
 
             updateUI();
         }, 1200);
 
         function addPassenger(stage) {
-            if (gameState.queues[stage].length < 10) {
-                gameState.queues[stage].push({ id: Date.now(), time: 0 });
+            if (gameState.queues[stage].length < 8) {
+                gameState.queues[stage].push({ id: Date.now() });
+                if (stage === 'arr1') gameState.landedCount++;
             }
         }
 
         function manualProcess(stage) {
             if (gameState.queues[stage].length > 0) {
                 gameState.queues[stage].shift();
-                
-                // Flow Progression
                 if (stage === 'dep1') addPassenger('dep2');
                 else if (stage === 'dep2') addPassenger('dep3');
                 else if (stage === 'dep3') addPassenger('dep4');
                 else if (stage === 'dep4') {
                     gameState.money += 25;
                     gameState.reputation = Math.min(100, gameState.reputation + 1);
+                    gameState.takeoffCount++;
                     animatePlane();
                 }
                 else if (stage === 'arr1') addPassenger('arr2');
@@ -462,39 +445,38 @@
                     gameState.money += 15;
                     gameState.reputation = Math.min(100, gameState.reputation + 1);
                 }
-
                 updateUI();
             }
         }
 
-        function processAuto(currentStage, nextStage, reward = 0) {
-            const staffCount = gameState.staff[currentStage];
-            if (staffCount > 0 && gameState.queues[currentStage].length > 0) {
-                const speed = gameState.upgrades[currentStage] ? 2 : 1;
-                for (let i = 0; i < Math.min(staffCount * speed, gameState.queues[currentStage].length); i++) {
-                    gameState.queues[currentStage].shift();
-                    if (nextStage) addPassenger(nextStage);
+        function processAuto(stg, nextStg, reward = 0) {
+            const count = gameState.staff[stg];
+            if (count > 0 && gameState.queues[stg].length > 0) {
+                const mult = gameState.upgrades[stg] ? 2 : 1;
+                for (let i = 0; i < Math.min(count * mult, gameState.queues[stg].length); i++) {
+                    gameState.queues[stg].shift();
+                    if (nextStg) addPassenger(nextStg);
                     else {
                         gameState.money += reward;
-                        if (currentStage === 'dep4') animatePlane();
+                        if (stg === 'dep4') { gameState.takeoffCount++; animatePlane(); }
                     }
                 }
             }
         }
 
-        function hireStaff(stage, cost) {
+        function hireStaff(stg, cost) {
             if (gameState.money >= cost) {
                 gameState.money -= cost;
-                gameState.staff[stage]++;
+                gameState.staff[stg]++;
                 updateUI();
             }
         }
 
-        function upgradeFacility(stage, cost) {
-            if (gameState.money >= cost && !gameState.upgrades[stage]) {
+        function upgradeFacility(stg, cost) {
+            if (gameState.money >= cost && !gameState.upgrades[stg]) {
                 gameState.money -= cost;
-                gameState.upgrades[stage] = true;
-                alert('시설 업그레이드가 완료되었습니다! 처리 속도가 대폭 향상됩니다.');
+                gameState.upgrades[stg] = true;
+                alert('시설 업그레이드 완료! 처리 속도가 증가합니다.');
                 updateUI();
             }
         }
@@ -502,31 +484,30 @@
         function triggerEvent() {
             const evt = eventDatabase[Math.floor(Math.random() * eventDatabase.length)];
             document.getElementById('modal-title').innerText = `🚨 ${evt.title}`;
-            document.getElementById('modal-body').innerText = evt.q;
+            document.getElementById('modal-desc').innerText = evt.q;
 
-            const optsContainer = document.getElementById('modal-options');
-            optsContainer.innerHTML = '';
+            const btnContainer = document.getElementById('modal-btns');
+            btnContainer.innerHTML = '';
 
-            // Shuffle options
             const shuffledOpts = [...evt.options].sort(() => Math.random() - 0.5);
 
             shuffledOpts.forEach(opt => {
                 const btn = document.createElement('button');
-                btn.className = 'btn-option';
+                btn.className = 'btn-opt';
                 btn.innerText = opt.txt;
                 btn.onclick = () => {
                     gameState.money += opt.money;
                     gameState.reputation = Math.max(0, Math.min(100, gameState.reputation + opt.rep));
-                    
-                    document.getElementById('modal-title').innerText = opt.correct ? "🎉 판단 결과: 성공" : "❌ 판단 결과: 실패";
-                    document.getElementById('modal-body').innerHTML = `
+
+                    document.getElementById('modal-title').innerText = opt.correct ? "🎉 판단 결과: 적절" : "❌ 판단 결과: 위반/패널티";
+                    document.getElementById('modal-desc').innerHTML = `
                         <b>${opt.res}</b><br><br>
-                        - 자산 변화: <span style="color:${opt.money >= 0 ? '#34d399':'#f87171'}">${opt.money >= 0 ? '+':'\\'}${opt.money}$</span><br>
+                        - 자산 변화: <span style="color:${opt.money >= 0 ? '#34d399':'#f87171'}">${opt.money >= 0 ? '+':''}${opt.money}$</span><br>
                         - 평판 변화: <span style="color:${opt.rep >= 0 ? '#34d399':'#f87171'}">${opt.rep >= 0 ? '+':''}${opt.rep}%</span>
                     `;
-                    optsContainer.innerHTML = `<button class="btn-option" style="text-align:center; background:#0284c7;" onclick="closeModal()">확인</button>`;
+                    btnContainer.innerHTML = `<button class="btn-opt" style="text-align:center; background:#0284c7;" onclick="closeModal()">확인</button>`;
                 };
-                optsContainer.appendChild(btn);
+                btnContainer.appendChild(btn);
             });
 
             document.getElementById('modal-event').classList.remove('hidden');
@@ -550,29 +531,37 @@
         function updateUI() {
             document.getElementById('txt-money').innerText = `$${gameState.money}`;
             document.getElementById('txt-rep').innerText = `${gameState.reputation}%`;
+            document.getElementById('cnt-land').innerText = gameState.landedCount;
+            document.getElementById('cnt-takeoff').innerText = gameState.takeoffCount;
 
+            let totalPax = 0;
             const stages = ['arr1', 'arr2', 'arr3', 'dep1', 'dep2', 'dep3', 'dep4'];
             stages.forEach(stg => {
-                document.getElementById(`cnt-${stg}`).innerText = gameState.queues[stg].length;
+                const len = gameState.queues[stg].length;
+                totalPax += len;
+                document.getElementById(`cnt-${stg}`).innerText = len;
                 document.getElementById(`staff-${stg}`).innerText = gameState.staff[stg];
 
-                // Render Emojis
-                const qBox = document.getElementById(`queue-${stg}`);
-                qBox.innerHTML = '';
-                gameState.queues[stg].forEach(() => {
-                    const span = document.createElement('span');
-                    span.className = 'pax-icon';
-                    span.innerText = '😐';
-                    qBox.appendChild(span);
-                });
+                const qArea = document.getElementById(`queue-${stg}`);
+                if (len === 0) {
+                    qArea.innerHTML = '<span class="pax-empty">대기 승객 없음</span>';
+                } else {
+                    qArea.innerHTML = '';
+                    for (let i = 0; i < len; i++) {
+                        const span = document.createElement('span');
+                        span.className = 'pax-emoji';
+                        span.innerText = '😐';
+                        qArea.appendChild(span);
+                    }
+                }
             });
+            document.getElementById('txt-pax-total').innerText = `${totalPax}명`;
 
-            // Disable buttons if not enough money
             document.getElementById('btn-hire-dep1').disabled = gameState.money < 100;
             document.getElementById('btn-hire-dep2').disabled = gameState.money < 300;
             document.getElementById('btn-hire-dep3').disabled = gameState.money < 1000;
             document.getElementById('btn-hire-dep4').disabled = gameState.money < 3000;
-            
+
             document.getElementById('btn-hire-arr1').disabled = gameState.money < 100;
             document.getElementById('btn-hire-arr2').disabled = gameState.money < 500;
             document.getElementById('btn-hire-arr3').disabled = gameState.money < 2000;
